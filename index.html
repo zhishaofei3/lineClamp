@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>多行文本一处省略号js</title>
+	<style type="text/css">
+		/*
+		  Warning! Webfonts cause problems in Chrome and IE.
+		  Must be careful to call the clamp function _after_
+		  the font is loaded or things go wrong.
+		*/
+		@import url(http://fonts.googleapis.com/css?family=Open+Sans);
+		body {
+			padding: 20px;
+			font: 1.2em/1.2em 'Open Sans', sans-serif;
+		}
+		.module {
+			border: 1px solid #CCC;
+			width: 250px;
+			margin: 0 0 1em 0;
+			overflow: hidden;
+		}
+		.module p {
+			margin: 0;
+		}
+		.line-clamp {
+			display: -webkit-box;
+			-webkit-line-clamp: 3;
+			-webkit-box-orient: vertical;
+		}
+		.fade {
+			position: relative;
+			height: 3.6em; /* exactly three lines */
+		}
+		.fade:after {
+			content: "";
+			text-align: right;
+			position: absolute;
+			bottom: 0;
+			right: 0;
+			width: 70%;
+			height: 1.2em;
+			background: linear-gradient(to right, rgba(255, 255, 255, 0), white 100%);
+			pointer-events: none;
+		}
+		.last-line {
+			height: 3.6em; /* exactly three lines */
+			text-overflow: -o-ellipsis-lastline;
+		}
+		h1 {
+			margin: 0 0 1em 0;
+		}
+		h2 {
+			font-size: 1.2em;
+		}
+	</style>
+</head>
+<body>
+<h1>Line Clampin' (with JavaScript)</h1>
+
+<h2>TextOverflowClamp.js Way</h2>
+<div class="module">
+	<p id="js-toclamp">Pellentesque
+		habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae, ultricies eget, tempor
+		sit amet, ante. Donec eu libero sit amet quam egestas semper. Aenean ultricies mi vitae est. Mauris placerat eleifend leo.
+	</p>
+</div>
+
+<h2>Clamp.js Way</h2>
+<div class="module js">
+	<p id="js-clamp">Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat
+		vitae, ultricies eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper. Aenean ultricies mi vitae est. Mauris placerat
+		eleifend leo.
+	</p>
+</div>
+
+<p><strong>What's the difference?</strong> Clamp.js removes original text content. TextOverflowClamp.js retains all original text and instead relies
+	on CSS' <code>text-overflow: ellipsis;</code></p>
+<p>It also has a "side effect": each line is dedicated it's own span element. You can use this to style any line. Use <code>clamp(element, 0)</code>
+	to give span to all lines.
+</p>
+<h3>Limitations</h3>
+<p>Not compatible with padding, text-indent and probably some other stylings.</p>
+<hr/>
+<h1>Line Clampin' (CSS only)</h1>
+
+<h2>Weird WebKit Flexbox Way</h2>
+<div class="module line-clamp">
+	<p>Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae, ultricies
+		eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper. Aenean ultricies mi vitae est. Mauris placerat eleifend leo.
+	</p>
+</div>
+
+<h2>Fade Out Way</h2>
+<div class="module fade">
+	<p>Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae, ultricies
+		eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper. Aenean ultricies mi vitae est. Mauris placerat eleifend leo.
+	</p>
+</div>
+
+<h2>Opera Overflow Way</h2>
+<div class="module last-line">
+	<p>Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae, ultricies
+		eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper. Aenean ultricies mi vitae est. Mauris placerat eleifend leo.
+	</p>
+</div>
+<script type="text/javascript" src="js/jquery.min.js"></script>
+<script type="text/javascript" src="js/clamp.js"></script>
+<script type="text/javascript">
+	// http://css-tricks.com/line-clampin/
+
+	// Clamp.js
+	// https://github.com/josephschmitt/Clamp.js
+
+	/**
+	 * TextOverflowClamp.js
+	 *
+	 * Updated 2013-05-09 to remove jQuery dependancy.
+	 * But be careful with webfonts!
+	 */
+
+	// bind function support for older browsers without it
+	// https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind
+	if (!Function.prototype.bind) {
+		Function.prototype.bind = function (oThis) {
+			if (typeof this !== "function") {
+				// closest thing possible to the ECMAScript 5 internal IsCallable function
+				throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
+			}
+
+			var aArgs = Array.prototype.slice.call(arguments, 1),
+				fToBind = this,
+				fNOP = function () {},
+				fBound = function () {
+					return fToBind.apply(this instanceof fNOP && oThis
+							? this
+							: oThis,
+						aArgs.concat(Array.prototype.slice.call(arguments)));
+				};
+
+			fNOP.prototype = this.prototype;
+			fBound.prototype = new fNOP();
+
+			return fBound;
+		};
+	}
+
+	// the actual meat is here
+	(function(w, d){
+		var clamp, measure, text, lineWidth,
+			lineStart, lineCount, wordStart,
+			line, lineText, wasNewLine,
+			ce = d.createElement.bind(d),
+			ctn = d.createTextNode.bind(d);
+
+		// measurement element is made a child of the clamped element to get it's style
+		measure = ce('span');
+
+		(function(s){
+			s.position = 'absolute'; // prevent page reflow
+			s.whiteSpace = 'pre'; // cross-browser width results
+			s.visibility = 'hidden'; // prevent drawing
+		})(measure.style);
+
+		clamp = function (el, lineClamp) {
+			// make sure the element belongs to the document
+			if(!el.ownerDocument || !el.ownerDocument === d) return;
+			// reset to safe starting values
+			lineStart = wordStart = 0;
+			lineCount = 1;
+			wasNewLine = false;
+			lineWidth = el.clientWidth;
+			// get all the text, remove any line changes
+			text = (el.textContent || el.innerText).replace(/\n/g, ' ');
+			// remove all content
+			while(el.firstChild !== null)
+				el.removeChild(el.firstChild);
+			// add measurement element within so it inherits styles
+			el.appendChild(measure);
+			// http://ejohn.org/blog/search-and-dont-replace/
+			text.replace(/ /g, function(m, pos) {
+				// ignore any further processing if we have total lines
+				if(lineCount === lineClamp) return;
+				// create a text node and place it in the measurement element
+				measure.appendChild(ctn(text.substr(lineStart, pos - lineStart)));
+				// have we exceeded allowed line width?
+				if(lineWidth < measure.clientWidth) {
+					if(wasNewLine) {
+						// we have a long word so it gets a line of it's own
+						lineText = text.substr(lineStart, pos + 1 - lineStart);
+						// next line start position
+						lineStart = pos + 1;
+					} else {
+						// grab the text until this word
+						lineText = text.substr(lineStart, wordStart - lineStart);
+						// next line start position
+						lineStart = wordStart;
+					}
+					// create a line element
+					line = ce('span');
+					// add text to the line element
+					line.appendChild(ctn(lineText));
+					// add the line element to the container
+					el.appendChild(line);
+					// yes, we created a new line
+					wasNewLine = true;
+					lineCount++;
+				} else {
+					// did not create a new line
+					wasNewLine = false;
+				}
+				// remember last word start position
+				wordStart = pos + 1;
+				// clear measurement element
+				measure.removeChild(measure.firstChild);
+			});
+			// remove the measurement element from the container
+			el.removeChild(measure);
+			// create the last line element
+			line = ce('span');
+			// give styles required for text-overflow to kick in
+			(function(s){
+				s.display = 'block';
+				s.overflow = 'hidden';
+				s.textOverflow = 'ellipsis';
+				s.whiteSpace = 'nowrap';
+				s.width = '100%';
+			})(line.style);
+			// add all remaining text to the line element
+			line.appendChild(ctn(text.substr(lineStart)));
+			// add the line element to the container
+			el.appendChild(line);
+		}
+		w.clamp = clamp;
+	})(window, document);
+
+	// the only bit of jQuery: trigger after fonts etc. are ready
+	$(window).bind('load', function() {
+		// Clamp.js
+		$clamp(document.getElementById("js-clamp"), {clamp: 3});
+		// TextOverflowClamp.js
+		clamp(document.getElementById('js-toclamp'), 3);
+	});
+</script>
+</body>
+</html>
